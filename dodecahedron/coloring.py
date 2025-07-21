@@ -20,46 +20,51 @@ def get_cycle_structure(perm):
     return cycles
 
 
-def count_colorings(colors, perm_group, color_counts):
-    """
-    考虑颜色数量限制，使用 Burnside 引理计算染色方案数
-    :param colors: 颜色列表
-    :param perm_group: 对称群（置换列表）
-    :param color_counts: 每种颜色的数量
-    :return: 方案数
-    """
-    from itertools import product
-    n_colors = len(colors)
-    n_elements = len(perm_group[0])
-    total_fixed = 0
+from math import factorial
 
-    all_colorings = product(range(n_colors), repeat=n_elements)
-    valid_colorings = []
-    for coloring in all_colorings:
-        counts = [0] * n_colors
-        for c in coloring:
-            counts[c] += 1
-        if counts == color_counts:
-            valid_colorings.append(coloring)
+def count_colorings(colors, perm_group, color_counts):
+    n_colors = len(colors)
+    n_elements = sum(color_counts)
+    total_fixed = 0
 
     for perm in perm_group:
         cycles = get_cycle_structure(perm)
-        fixed = 0
-        for coloring in valid_colorings:
-            is_fixed = True
-            for cycle in cycles:
-                cycle_color = coloring[cycle[0]]
-                for idx in cycle:
-                    if coloring[idx] != cycle_color:
-                        is_fixed = False
-                        break
-                if not is_fixed:
-                    break
-            if is_fixed:
-                fixed += 1
+        cycle_lengths = [len(cycle) for cycle in cycles]
+        # 检查是否可以为每个循环分配相同颜色
+        possible = True
+        for cycle_length in cycle_lengths:
+            if any(count % cycle_length != 0 for count in color_counts):
+                possible = False
+                break
+        if not possible:
+            continue
+        # 计算固定点数量
+        fixed = 1
+        for cycle_length in cycle_lengths:
+            choices = 0
+            for count in color_counts:
+                if count % cycle_length == 0:
+                    choices += 1
+            fixed *= choices
         total_fixed += fixed
 
     return total_fixed // len(perm_group)
+
+def get_cycle_structure(perm):
+    n = len(perm)
+    visited = [False] * n
+    cycles = []
+    for i in range(n):
+        if not visited[i]:
+            cycle = []
+            j = i
+            while not visited[j]:
+                visited[j] = True
+                cycle.append(j)
+                j = perm[j]
+            cycles.append(cycle)
+            cycles.append(cycle)
+    return cycles
 
 
 def build_stabilizer_chain(perm_group):

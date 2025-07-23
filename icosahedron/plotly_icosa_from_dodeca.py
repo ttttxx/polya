@@ -1,21 +1,18 @@
 """
 把「十二面体 20 顶点染色方案」直接映射到「二十面体 20 个面」
 并在浏览器中交互展示。
+
 使用方法：
     python plotly_icosa_from_dodeca.py
-随后按提示输入即可。
 """
 import numpy as np
 import plotly.graph_objects as go
 import colorsys, matplotlib.colors as mc
-import sys, os, pickle
+import sys, os, re, glob
 from datetime import datetime
-# 复用你已有的工具
-from dodecahedron.coloring import get_all_colorings
-from dodecahedron.utils import create_color_mapping
 
 # -------------------------------------------------
-# 1. 二十面体几何（与之前定义一致）
+# 1. 二十面体几何
 # -------------------------------------------------
 def create_icosahedron():
     phi = (1 + np.sqrt(5)) / 2
@@ -36,7 +33,7 @@ def create_icosahedron():
 VERTICES, FACES = create_icosahedron()
 
 # -------------------------------------------------
-# 2) 颜色降饱和度函数
+# 2) 颜色降饱和度
 # -------------------------------------------------
 def desaturate(c, factor=0.6):
     r, g, b = mc.to_rgb(c)
@@ -45,41 +42,71 @@ def desaturate(c, factor=0.6):
     return colorsys.hsv_to_rgb(h, s, v)
 
 # -------------------------------------------------
-# 3) 主函数：读取方案 → 映射 → 绘图
+# 3) 读取 txt
+# -------------------------------------------------
+def load_colorings_from_txt(txt_path):
+    colorings = []
+    with open(txt_path, encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("Class"):  # 改为根据 Class 解析
+                try:
+                    # 获取颜色字符串，去除 "Class xxx: " 这一部分
+                    colors_str = line.split(":", 1)[1].strip()
+                    colorings.append(colors_str.split())
+                except Exception:
+                    continue
+    return colorings
+
+
+# -------------------------------------------------
+# 4) 主程序：选文件 → 选方案 → 绘图
 # -------------------------------------------------
 def main():
-    cache_file = "vertex_symmetry_group.pkl"
-    if not os.path.exists(cache_file):
-        print("请先运行原程序生成 vertex_symmetry_group.pkl")
+    folder = os.path.join(os.path.dirname(__file__), "..", "")
+    pattern = os.path.join(folder, "vertex_colorings_*.txt")
+    files = sorted(glob.glob(pattern))
+
+    if not files:
+        print(f"在 {folder}/ 目录下没有找到 vertex_colorings_*.txt")
         sys.exit(1)
 
-    with open(cache_file, "rb") as f:
-        perm_group = pickle.load(f)
-
-    print("沿用原程序的颜色配置：")
-    color_names = ["r", "b"]          # 或根据你实际输入改动
-    color_counts = [5, 15]            # 示例：5红 15蓝，总和=20
-    color_mapping = create_color_mapping(color_names)
-
-    all_reps = get_all_colorings(color_names, perm_group, color_counts)
-
-    print("\n共有方案：", len(all_reps))
-    show_n = min(len(all_reps), 5)
-    for idx, coloring in enumerate(all_reps[:show_n], 1):
-        print(f"方案 {idx}: {'-'.join(coloring)}")
+    print("找到以下顶点染色文件：")
+    for idx, fp in enumerate(files, 1):
+        print(f"  {idx}: {os.path.basename(fp)}")
 
     try:
-        sel = int(input(f"\n输入要展示的方案编号(1-{len(all_reps)})："))
-        coloring = all_reps[sel-1]
+        file_idx = int(input("\n选择要加载的文件编号：")) - 1
+        txt_path = files[file_idx]
     except (ValueError, IndexError):
         print("输入错误"); sys.exit(1)
 
-    # 把 20 种颜色映射为 RGB
-    rgb_colors = [f"rgb{tuple(int(255*x) for x in desaturate(color_mapping.get(c,c)))}"
+    colorings = load_colorings_from_txt(txt_path)
+    if not colorings:
+        print("该文件没有可解析的方案")
+        sys.exit(1)
+
+    print("\n共读取到方案：", len(colorings))
+    show_n = min(len(colorings), 5)
+    for idx, c in enumerate(colorings[:show_n], 1):
+        print(f"方案 {idx}: {'-'.join(c)}")
+
+    try:
+        scheme_idx = int(input(f"\n输入要展示的方案编号(1-{len(colorings)})："))
+        coloring = colorings[scheme_idx - 1]
+    except (ValueError, IndexError):
+        print("输入错误"); sys.exit(1)
+
+    # 颜色映射
+    color_map = {
+        'r': 'red', 'b': 'blue', 'g': 'green', 'y': 'yellow',
+        'k': 'black', 'w': 'white', 'c': 'cyan', 'm': 'magenta'
+    }
+    rgb_colors = [f"rgb{tuple(int(255*x) for x in desaturate(color_map.get(c, c)))}"
                   for c in coloring]
 
     # -------------------------------------------------
-    # 4) Plotly 绘图
+    # 5) Plotly 绘图
     # -------------------------------------------------
     fig = go.Figure()
     for face, clr in zip(FACES, rgb_colors):
@@ -91,11 +118,8 @@ def main():
             opacity=1.0,
             flatshading=False,
             lighting=dict(
-                ambient=0.2,
-                diffuse=0.8,
-                specular=0.9,
-                roughness=0.25,
-                fresnel=0.5
+                ambient=0.2, diffuse=0.8, specular=0.9,
+                roughness=0.25, fresnel=0.5
             ),
             lightposition=dict(x=300, y=300, z=200)
         ))
@@ -109,12 +133,12 @@ def main():
             aspectmode='cube',
             camera=dict(eye=dict(x=2, y=2, z=2))
         ),
-        margin=dict(l=0,r=0,t=0,b=0),
+        margin=dict(l=0, r=0, t=0, b=0),
         showlegend=False
     )
 
     ts = datetime.now().strftime("%H%M%S")
-    html_name = f"icosa_face_scheme_{sel}_{ts}.html"
+    html_name = f"icosa_face_{os.path.splitext(os.path.basename(txt_path))[0]}_scheme{scheme_idx}_{ts}.html"
     fig.write_html(html_name)
     print(f"已保存 {html_name}")
     fig.show()

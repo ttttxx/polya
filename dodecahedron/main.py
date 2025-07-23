@@ -1,43 +1,25 @@
-import time
-import sys
 import os
 import pickle
+import sys
+import time
 from datetime import datetime
 
-from matplotlib import pyplot as plt
-
-from dodecahedron.group_generation import generate_symmetry_group
 from dodecahedron.coloring import count_colorings, get_all_colorings, save_colorings_to_file
-from dodecahedron.visualization import visualize_vertex_coloring, visualize_face_coloring, visualize_dodecahedron_rotation
+from dodecahedron.group_generation import generate_dodecahedron_rotations
 from dodecahedron.utils import create_color_mapping, BASIC_COLORS
+from dodecahedron.visualization import visualize_vertex_coloring
 
 
 def main():
     # 用户选择染色模式
-    print("选择染色模式:")
-    print("1. 顶点染色 (20个顶点)")
-    print("2. 面染色 (12个面)")
-    try:
-        mode = int(input("输入选项 (1 或 2): "))
-    except ValueError:
-        print("无效选项! 请输入数字1或2")
-        sys.exit(1)
+    print("顶点染色 (20个顶点)")
 
-    if mode == 1:
-        n_elements = 20
-        element_name = "顶点"
-        visualize_func = visualize_vertex_coloring
-        symmetry_mode = 'vertex'
-        element_type = 'vertex'
-    elif mode == 2:
-        n_elements = 12
-        element_name = "面"
-        visualize_func = visualize_face_coloring
-        symmetry_mode = 'face'
-        element_type = 'face'
-    else:
-        print("无效选项! 请输入数字1或2")
-        sys.exit(1)
+    n_elements = 20
+    element_name = "顶点"
+    visualize_func = visualize_vertex_coloring
+    symmetry_mode = 'vertex'
+    element_type = 'vertex'
+
 
     # 尝试从本地文件加载对称群
     cache_filename = f"{symmetry_mode}_symmetry_group.pkl"
@@ -49,7 +31,7 @@ def main():
         # 生成对称群
         start_time = time.time()
         print(f"正在生成对称群...")
-        perm_group = generate_symmetry_group(symmetry_mode)
+        perm_group = generate_dodecahedron_rotations()
         print(f"已生成对称群 ({len(perm_group)} 个对称操作), 耗时: {time.time() - start_time:.2f}秒")
 
         # 将对称群保存到本地文件
@@ -94,22 +76,10 @@ def main():
     total = count_colorings(color_names, perm_group, color_counts)
     print(f"\n所有不等价染色方案数: {total}")
 
-    # 枚举所有具体方案（仅当方案数合理时）
-    if total > 1000:
-        print(f"\n警告: 不等价方案数 ({total}) 较大，可能需要较长时间")
-        print("是否继续枚举具体方案? (y/n)")
-        choice = input().strip().lower()
-        if choice != 'y':
-            print("已跳过具体方案枚举")
-            all_reps = []
-        else:
-            print(f"\n开始枚举所有 {total} 个不等价方案...")
-            start_time = time.time()
-            all_reps = get_all_colorings(color_names, perm_group, color_counts)
-    else:
-        print(f"\n开始枚举所有 {total} 个不等价方案...")
-        start_time = time.time()
-        all_reps = get_all_colorings(color_names, perm_group, color_counts)
+    # 枚举所有具体方案
+    print(f"\n开始枚举所有不等价方案...")
+    start_time = time.time()
+    all_reps = get_all_colorings(color_names, perm_group, color_counts)
 
     # 显示前5个方案
     if all_reps:
@@ -120,36 +90,36 @@ def main():
         # 保存所有方案到文件
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{element_type}_colorings_{timestamp}.txt"
-        save_colorings_to_file(all_reps, filename, element_type)
+        save_colorings_to_file(all_reps, filename)
 
         # 询问用户是否可视化指定方案
-        print("\n是否可视化指定方案? (y/n)")
-        if input().strip().lower() == 'y':
-            while True:
-                try:
-                    scheme_num = input(f"请输入要可视化的方案编号 (1 - {len(all_reps)}, 输入 'q' 退出): ")
-                    if scheme_num.lower() == 'q':
-                        break
-                    scheme_num = int(scheme_num)
-                    if 1 <= scheme_num <= len(all_reps):
-                        coloring = all_reps[scheme_num - 1]
-                        fig, ax = visualize_func(color_mapping, coloring)
-
-                        # 保存可视化结果为图片
-                        img_filename = f"{element_type}_coloring_{timestamp}_scheme_{scheme_num}.png"
-                        plt.savefig(img_filename, dpi=150, bbox_inches='tight')
-                        print(f"已保存可视化结果为: {img_filename}")
-
-                        plt.show()
-
-                        # 询问用户是否展示旋转动画
-                        print("\n是否展示该方案的旋转动画? (y/n)")
-                        if input().strip().lower() == 'y':
-                            visualize_dodecahedron_rotation(color_mapping, coloring, mode=element_type)
-                    else:
-                        print("输入的方案编号超出范围，请输入有效编号。")
-                except ValueError:
-                    print("输入无效，请输入一个整数或 'q' 退出。")
+        # print("\n是否可视化指定方案? (y/n)")
+        # if input().strip().lower() == 'y':
+        #     while True:
+        #         try:
+        #             scheme_num = input(f"请输入要可视化的方案编号 (1 - {len(all_reps)}, 输入 'q' 退出): ")
+        #             if scheme_num.lower() == 'q':
+        #                 break
+        #             scheme_num = int(scheme_num)
+        #             if 1 <= scheme_num <= len(all_reps):
+        #                 coloring = all_reps[scheme_num - 1]
+        #                 fig, ax = visualize_func(color_mapping, coloring)
+        #
+        #                 # 保存可视化结果为图片
+        #                 img_filename = f"{element_type}_coloring_{timestamp}_scheme_{scheme_num}.png"
+        #                 plt.savefig(img_filename, dpi=150, bbox_inches='tight')
+        #                 print(f"已保存可视化结果为: {img_filename}")
+        #
+        #                 plt.show()
+        #
+        #                 # 询问用户是否展示旋转动画
+        #                 print("\n是否展示该方案的旋转动画? (y/n)")
+        #                 if input().strip().lower() == 'y':
+        #                     visualize_dodecahedron_rotation(color_mapping, coloring, mode=element_type)
+        #             else:
+        #                 print("输入的方案编号超出范围，请输入有效编号。")
+        #         except ValueError:
+        #             print("输入无效，请输入一个整数或 'q' 退出。")
     else:
         print("\n未生成具体方案列表")
 

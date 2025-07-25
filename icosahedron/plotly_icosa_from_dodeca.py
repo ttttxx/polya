@@ -63,7 +63,7 @@ def load_colorings_from_txt(txt_path):
 # 4) 主程序：选文件 → 选方案 → 绘图
 # -------------------------------------------------
 def main():
-    folder = os.path.join(os.path.dirname(__file__), "..", "")
+    folder = os.path.join(os.path.dirname(__file__), "..", "dodecahedron")
     pattern = os.path.join(folder, "vertex_colorings_*.txt")
     files = sorted(glob.glob(pattern))
 
@@ -100,7 +100,7 @@ def main():
     # 颜色映射
     color_map = {
         'r': 'red', 'b': 'blue', 'g': 'green', 'y': 'yellow',
-        'k': 'black', 'w': 'white', 'c': 'cyan', 'm': 'magenta'
+        'k': 'black', 'w': 'white', 'c': 'cyan', 'm': 'magenta','p':'pink'
     }
     rgb_colors = [f"rgb{tuple(int(255*x) for x in desaturate(color_map.get(c, c)))}"
                   for c in coloring]

@@ -10,22 +10,20 @@ def count_fixed_by_permutation(colors, color_counts, sizes):
     """
     计算在给定置换下保持不变的染色方案数。
     :param colors: 颜色列表
-    :param color_counts: 列表，颜色对应的计数
+    :param color_counts: dict，颜色->该颜色应使用的次数
     :param sizes: 轮换大小列表
     :return: 整数，表示固定染色方案数
     """
-    # 按颜色顺序提取目标计数，假设 colors 和 color_counts 对应
-    counts_list = [color_counts[i] for i in range(len(colors))]
-    # 排序轮换大小（从大到小提高效率）
+    # 按 colors 顺序提取计数
+    counts_list = [color_counts[c] for c in colors]
     sorted_sizes = sorted(sizes, reverse=True)
-    # 使用记忆化递归计算
     memo = {}
 
     def dp(i, remaining):
         if i == len(sorted_sizes):
             return 1 if all(r == 0 for r in remaining) else 0
 
-        key = (i, tuple(remaining))  # 需要将remaining转为元组，以便可以作为字典的键
+        key = (i, tuple(remaining))
         if key in memo:
             return memo[key]
 
@@ -47,7 +45,7 @@ def count_colorings(colors, perm_group, color_counts):
     使用Burnside引理计算在群作用下不等价的染色方案数。
     :param colors: 颜色列表
     :param perm_group: 字典，表示群（包含所有置换的轮换分解）
-    :param color_counts: 字典，颜色->该颜色应使用的次数
+    :param color_counts: dict，颜色->该颜色应使用的次数
     :return: 浮点数，表示不等价染色方案数
     """
     total_vertices = 20
@@ -97,12 +95,12 @@ def generate_all_valid_colorings(colors, color_counts, n=20):
     """
     生成所有满足颜色计数约束的染色方案。
     :param colors: 颜色列表
-    :param color_counts: 列表，颜色对应的计数
+    :param color_counts: dict，颜色->该颜色应使用的次数
     :param n: 顶点数
     :return: 列表，每个元素是一个染色方案（元组）
     """
     colors_list = list(colors)
-    counts_req = [color_counts[i] for i in range(len(colors_list))]  # 适配为列表索引
+    counts_req = [color_counts[c] for c in colors_list]  # 改为按颜色名取值
     counts_curr = [0] * len(colors_list)
     results = []
     current_coloring = [None] * n
@@ -124,7 +122,6 @@ def generate_all_valid_colorings(colors, color_counts, n=20):
     return results
 
 
-
 def is_representative(coloring, group_perms):
     """
     检查染色方案是否是其轨道的字典序最小代表。
@@ -135,27 +132,34 @@ def is_representative(coloring, group_perms):
     return all(tuple(coloring[pinv[i]] for i in range(len(coloring))) >= coloring for _, pinv in group_perms)
 
 
-def get_all_colorings(colors, perm_group, color_counts):
+def get_all_colorings(colors, perm_group, color_counts, max_results=5000):
     """
     枚举所有不等价的染色方案（每个轨道选一个代表）。
+    如果不等价方案数大于 max_results，则只输出前 max_results 个。
     :param colors: 颜色列表
     :param perm_group: 字典，表示群
-    :param color_counts: 字典，颜色->该颜色应使用的次数
+    :param color_counts: dict，颜色->该颜色应使用的次数
+    :param max_results: 最大输出数量
     :return: 列表，每个元素是一个不等价染色方案（元组）
     """
     total_vertices = 20
-    # 生成所有有效染色方案
     all_colorings = generate_all_valid_colorings(colors, color_counts, total_vertices)
-    # 构建群的所有置换的逆置换函数
     group_perms = []
     for cycle_decomp in perm_group.values():
         _, pinv = build_permutation(cycle_decomp, total_vertices)
         group_perms.append((None, pinv))  # 只需逆置换
 
-    # 过滤出代表元
-    representatives = [coloring for coloring in all_colorings if is_representative(coloring, group_perms)]
+    representatives = []
+    for coloring in all_colorings:
+        if is_representative(coloring, group_perms):
+            representatives.append(coloring)
+            # 新增：如果超过 max_results，就提前停止
+            if len(representatives) >= max_results:
+                print(f"超过 {max_results} 个方案，仅保留前 {max_results} 个。")
+                break
 
     return representatives
+
 
 
 def save_colorings_to_file(colorings, filename, element_type="vertex"):
@@ -173,15 +177,11 @@ def save_colorings_to_file(colorings, filename, element_type="vertex"):
             f.write(f"Class {idx}: {coloring_str}\n")
     print(f"Colorings saved to {file_path}")
 
+
 # 使用示例
 if __name__ == "__main__":
-    # 定义颜色和数量约束
     colors = ['红', '蓝', '绿']
-    color_counts = {'红': 10, '蓝': 6, '绿': 4}  # 字典形式
-
-    # 计算不等价染色方案数
+    color_counts = {'红': 10, '蓝': 6, '绿': 4}
     count = count_colorings(colors, SYMMETRY_CACHE, color_counts)
     print(f"Number of inequivalent colorings: {count}")
-
-    # 枚举所有不等价方案
     all_colorings = get_all_colorings(colors, SYMMETRY_CACHE, color_counts)

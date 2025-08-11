@@ -21,27 +21,27 @@ def main():
     element_type = 'vertex'
 
 
-    # 尝试从本地文件加载对称群
-    cache_filename = f"{symmetry_mode}_symmetry_group.pkl"
-    if os.path.exists(cache_filename):
-        with open(cache_filename, 'rb') as f:
-            perm_group = pickle.load(f)
-        print(f"已从本地文件加载对称群 ({len(perm_group)} 个对称操作)")
-    else:
+    # # 尝试从本地文件加载对称群
+    # cache_filename = f"{symmetry_mode}_symmetry_group.pkl"
+    # if os.path.exists(cache_filename):
+    #     with open(cache_filename, 'rb') as f:
+    #         perm_group = pickle.load(f)
+    #     print(f"已从本地文件加载对称群 ({len(perm_group)} 个对称操作)")
+    # else:
         # 生成对称群
-        start_time = time.time()
-        print(f"正在生成对称群...")
-        perm_group = generate_dodecahedron_rotations()
-        print(f"已生成对称群 ({len(perm_group)} 个对称操作), 耗时: {time.time() - start_time:.2f}秒")
+    start_time = time.time()
+    print(f"正在生成对称群...")
+    perm_group = generate_dodecahedron_rotations()
+    print(f"已生成对称群 ({len(perm_group)} 个对称操作), 耗时: {time.time() - start_time:.2f}秒")
 
-        # 将对称群保存到本地文件
-        with open(cache_filename, 'wb') as f:
-            pickle.dump(perm_group, f)
-        print(f"已将对称群保存到本地文件: {cache_filename}")
+        # # 将对称群保存到本地文件
+        # with open(cache_filename, 'wb') as f:
+        #     pickle.dump(perm_group, f)
+        # print(f"已将对称群保存到本地文件: {cache_filename}")
 
     # 用户输入颜色和数量
     color_names = []
-    color_counts = []
+    color_counts = {}
     total_count = 0
     try:
         n = int(input(f"\n输入颜色种类数 (用于{n_elements}个{element_name}): "))
@@ -52,6 +52,7 @@ def main():
     print("\n可用的基础颜色: " + ", ".join(BASIC_COLORS.keys()))
     print("或使用任何有效的颜色名称\n")
 
+
     for i in range(n):
         name = input(f"输入颜色#{i + 1}的名称 (如'红'或'blue'): ").strip()
         try:
@@ -60,7 +61,7 @@ def main():
             print("无效输入! 请输入整数")
             sys.exit(1)
         color_names.append(name)
-        color_counts.append(count)
+        color_counts[name] = count
         total_count += count
 
     if total_count != n_elements:
@@ -125,4 +126,57 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if __name__ == "__main__":
+        # 用户选择染色模式
+        print("顶点染色 (20个顶点)")
+
+        n_elements = 20
+        element_name = "顶点"
+        visualize_func = visualize_vertex_coloring
+        symmetry_mode = 'vertex'
+        element_type = 'vertex'
+
+
+        start_time = time.time()
+        print(f"正在生成对称群...")
+        perm_group = generate_dodecahedron_rotations()
+        print(f"已生成对称群 ({len(perm_group)} 个对称操作), 耗时: {time.time() - start_time:.2f}秒")
+
+
+        # 直接设置颜色和数量（红色10个，蓝色10个）
+        color_names = ['红', '蓝', '绿']
+        color_counts = {'红': 9, '蓝': 6,'绿': 5}
+        total_count = sum(color_counts.values())
+
+        if total_count != n_elements:
+            print(
+                f"输入的颜色数量总和 ({total_count}) 不等于 {n_elements} 个{element_name}，请重新运行程序并输入正确的数量。")
+            sys.exit(1)
+
+        # 创建颜色映射
+        color_mapping = create_color_mapping(color_names)
+        for name, color_val in color_mapping.items():
+            print(f"  {name} 映射到: {color_val}")
+
+        # 计算并显示方案数
+        total = count_colorings(color_names, perm_group, color_counts)
+        print(f"\n所有不等价染色方案数: {total}")
+
+        # 枚举所有具体方案
+        print(f"\n开始枚举所有不等价方案...")
+        start_time = time.time()
+        all_reps = get_all_colorings(color_names, perm_group, color_counts)
+
+        # 显示前5个方案
+        if all_reps:
+            print("\n前5个代表方案:")
+            for i, coloring in enumerate(all_reps[:5]):
+                print(f"方案{i + 1}: {'-'.join(coloring[:min(8, len(coloring))])}{'...' if len(coloring) > 8 else ''}")
+
+            # 保存所有方案到文件
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"{element_type}_colorings_{timestamp}.txt"
+            save_colorings_to_file(all_reps, filename)
+
+        else:
+            print("\n未生成具体方案列表")

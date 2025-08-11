@@ -2,6 +2,14 @@ import ast
 
 SYMMETRY_CACHE = {}
 
+def normalize_cycles(cycle_decomp, n=20):
+    """补齐缺失的单点循环"""
+    covered = set()
+    for cycle in cycle_decomp:
+        covered |= set(cycle)
+    uncovered = set(range(n)) - covered
+    return cycle_decomp + [(v,) for v in uncovered]
+
 def generate_dodecahedron_rotations():
     file_path = '/Users/xushi/PycharmProjects/polya/dodecahedron/dodecahedron_group.txt'
 
@@ -10,10 +18,9 @@ def generate_dodecahedron_rotations():
             lines = f.readlines()
 
         for i, line in enumerate(lines):
-            # 解析每一行的对称群置换操作
-            # 使用 ast.literal_eval 安全地将字符串转换为 Python 对象（列表）
             try:
                 rotation = ast.literal_eval(line.strip())
+                rotation = normalize_cycles(rotation, 20)  # ✅ 补齐 20 个顶点
                 SYMMETRY_CACHE[i] = rotation
             except Exception as e:
                 print(f"Error parsing line {i + 1}: {line}. Error: {e}")
@@ -27,5 +34,10 @@ def generate_dodecahedron_rotations():
 
 if __name__ == "__main__":
     generate_dodecahedron_rotations()
-    # 查看缓存的对称群操作
     print(SYMMETRY_CACHE)
+    for idx, cycle_decomp in SYMMETRY_CACHE.items():
+        covered = set()
+        for cycle in cycle_decomp:
+            covered |= set(cycle)
+        if len(covered) != 20:
+            print(f"❌ Element {idx} still only covers {len(covered)} vertices")

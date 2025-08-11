@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 import colorsys, matplotlib.colors as mc
 import sys, os, re, glob
 from datetime import datetime
+from dodecahedron.utils import BASIC_COLORS
 
 # -------------------------------------------------
 # 1. 二十面体几何
@@ -98,10 +99,7 @@ def main():
         print("输入错误"); sys.exit(1)
 
     # 颜色映射
-    color_map = {
-        'r': 'red', 'b': 'blue', 'g': 'green', 'y': 'yellow',
-        'k': 'black', 'w': 'white', 'c': 'cyan', 'm': 'magenta','p':'pink'
-    }
+    color_map = BASIC_COLORS
     rgb_colors = [f"rgb{tuple(int(255*x) for x in desaturate(color_map.get(c, c)))}"
                   for c in coloring]
 
